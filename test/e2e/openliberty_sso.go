@@ -80,6 +80,7 @@ func testSocialLogin(t *testing.T, f *framework.Framework, ctx *framework.TestCt
 	clusterIp := corev1.ServiceTypeClusterIP
 	githubLogin := v1beta1.GithubLogin{Hostname: "github.com"}
 	openliberty := util.MakeBasicOpenLibertyApplication(t, f, name, ns, 1)
+	openliberty.Spec.ApplicationImage = "openliberty/open-liberty:full-java8-openj9-ubi"
 	// TODO debug why these environment variables are causing it to crash loop
 	openliberty.Spec.Env = []corev1.EnvVar{
 		{Name: "SEC_TLS_TRUSTDEFAULTCERTS", Value: "true"},
@@ -147,6 +148,7 @@ func testSocialLogin(t *testing.T, f *framework.Framework, ctx *framework.TestCt
 	// TODO: Turn off SSO and verify cleanup
 	err = util.UpdateApplication(f, target, func(r *openlibertyv1beta1.OpenLibertyApplication) {
 		ol := util.MakeBasicOpenLibertyApplication(t, f, target.Name, target.Namespace, 1)
+		ol.Spec.ApplicationImage = "openliberty/open-liberty:full-java8-openj9-ubi"
 		r.Spec = ol.Spec
 	})
 	if err != nil {
@@ -202,6 +204,7 @@ func testProviderLogins(t *testing.T, f *framework.Framework, ctx *framework.Tes
 	clusterIp := corev1.ServiceTypeClusterIP
 	githubLogin := v1beta1.GithubLogin{Hostname: "github.com"}
 	openliberty := util.MakeBasicOpenLibertyApplication(t, f, name, ns, 1)
+	openliberty.Spec.ApplicationImage = "openliberty/open-liberty:full-java8-openj9-ubi"
 	// TODO debug why these environment variables are causing it to crash loop
 	openliberty.Spec.Env = []corev1.EnvVar{
 		{Name: "SEC_TLS_TRUSTDEFAULTCERTS", Value: "true"},
