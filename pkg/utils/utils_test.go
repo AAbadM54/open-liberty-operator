@@ -116,6 +116,12 @@ func TestCustomizeEnvSSO(t *testing.T) {
 		},
 		Oauth2: []v1beta1.OAuth2Client{
 			{
+				ID: "custom1",
+				AuthorizationEndpoint: "specify-required-value",
+				TokenEndpoint: "specify-required-value",
+			},
+			{
+				ID: "custom2",
 				AuthorizationEndpoint: "specify-required-value",
 				TokenEndpoint: "specify-required-value",
 			},
@@ -149,6 +155,11 @@ func TestCustomizeEnvSSO(t *testing.T) {
 		{"OIDC clientSecret set", string(data["oidc-clientSecret"]), podEnv["SEC_SSO_OIDC_CLIENTSECRET"]},
 		{"Github hostname set", "github.com", podEnv["SEC_SSO_GITHUB_HOSTNAME"]},
 		{"OIDC discovery endpoint", "myapp.mycompany.com", podEnv["SEC_SSO_OIDC_DISCOVERYENDPOINT"]},
+		{"custom1 authorization endpoint", "specify-required-value", podEnv["SEC_SSO_CUSTOM1_AUTHORIZATIONENDPOINT"]},
+		{"custom1 token endpoint", "specify-required-value", podEnv["SEC_SSO_CUSTOM1_TOKENENDPOINT"]},
+		{"custom2 authorization endpoint", "specify-required-value", podEnv["SEC_SSO_CUSTOM2_AUTHORIZATIONENDPOINT"]},
+		{"custom2 token endpoint", "specify-required-value", podEnv["SEC_SSO_CUSTOM2_TOKENENDPOINT"]},
+
 	}
 
 	if err := verifyTests(tests); err != nil {

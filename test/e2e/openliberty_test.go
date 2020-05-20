@@ -34,14 +34,15 @@ func TestOpenLibertyApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to add Trace scheme to framework: %v", err)
 	}
-	// basic tests that are runnable locally in minishift/kube
-	t.Run("OpenLibertyPullPolicyTest", OpenLibertyPullPolicyTest)
-	t.Run("OpenLibertyBasicTest", OpenLibertyBasicTest)
-	t.Run("OpenLibertyProbeTest", OpenLibertyProbeTest)
-	t.Run("OpenLibertyAutoScalingTest", OpenLibertyAutoScalingTest)
-	t.Run("OpenLibertyStorageTest", OpenLibertyBasicStorageTest)
-	t.Run("OpenLibertyPersistenceTest", OpenLibertyPersistenceTest)
-	t.Run("OpenLibertyTraceTest", OpenLibertyTraceTest)
+	// // basic tests that are runnable locally in minishift/kube
+	// t.Run("OpenLibertyPullPolicyTest", OpenLibertyPullPolicyTest)
+	// t.Run("OpenLibertyBasicTest", OpenLibertyBasicTest)
+	// t.Run("OpenLibertyProbeTest", OpenLibertyProbeTest)
+	// t.Run("OpenLibertyAutoScalingTest", OpenLibertyAutoScalingTest)
+	// t.Run("OpenLibertyStorageTest", OpenLibertyBasicStorageTest)
+	// t.Run("OpenLibertyPersistenceTest", OpenLibertyPersistenceTest)
+	// t.Run("OpenLibertyTraceTest", OpenLibertyTraceTest)
+	t.Run("OpenLibertySSOTest", OpenLibertySSOTest)
 
 	if cluster != "local" {
 		// only test non-OCP features on minikube

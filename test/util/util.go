@@ -13,6 +13,7 @@ import (
 	servingv1alpha1 "github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -492,4 +493,38 @@ func CreateSecretForSSO(f *framework.Framework, ctx *framework.TestCtx, target t
 	}
 
 	return nil
+}
+
+func WaitForPodUpdates(t *testing.T, f *framework.Framework, ctx *framework.TestCtx, target types.NamespacedName, replicas int) error {
+	retryInterval := time.Second * 2
+	timeout := time.Second * 30
+	// give operator a moment to kick off NEW pod
+	time.Sleep(time.Second * 4)
+	// wait for only the new pod to be running
+	err := wait.Poll(retryInterval, timeout, func() (done bool, err error) {
+		podList, err := GetPods(f, ctx, target.Name, target.Namespace)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, err
+			}
+			return true, err
+		}
+
+		runningPods := 0
+
+		for _, pod := range podList.Items {
+			if pod.Status.Phase == "Running" {
+				runningPods += 1
+			}
+		}
+
+		if runningPods == replicas && len(podList.Items) == replicas {
+			return true, nil
+		}
+
+		t.Log("waiting for pods to finish updating")
+		return false, nil
+	})
+
+	return err
 }
