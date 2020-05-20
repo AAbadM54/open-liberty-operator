@@ -6,10 +6,12 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/OpenLiberty/open-liberty-operator/pkg/apis/openliberty/v1beta1"
 	openlibertyv1beta1 "github.com/OpenLiberty/open-liberty-operator/pkg/apis/openliberty/v1beta1"
 	oputils "github.com/application-stacks/runtime-component-operator/pkg/utils"
 	servingv1alpha1 "github.com/knative/serving/pkg/apis/serving/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
+	v1 "github.com/openshift/api/route/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,6 +28,7 @@ var (
 	appImage            = "my-image"
 	consoleFormat       = "json"
 	replicas      int32 = 3
+	clusterType = corev1.ServiceTypeClusterIP
 )
 
 type Test struct {
@@ -39,7 +42,6 @@ func TestCustomizeLibertyEnv(t *testing.T) {
 	os.Setenv("WATCH_NAMESPACE", namespace)
 
 	// Test default values no config
-	clusterType := corev1.ServiceTypeClusterIP
 	svc := &openlibertyv1beta1.OpenLibertyApplicationService{Port: 8080, Type: &clusterType}
 	spec := openlibertyv1beta1.OpenLibertyApplicationSpec{Service: svc}
 	pts := &corev1.PodTemplateSpec{}
@@ -85,10 +87,88 @@ func TestCustomizeLibertyEnv(t *testing.T) {
 	if err := verifyTests(testEnv); err != nil {
 		t.Fatalf("%v", err)
 	}
+}
 
+func TestCustomizeEnvSSO(t *testing.T) {
+	logf.SetLogger(logf.ZapLogger(true))
+	os.Setenv("WATCH_NAMESPACE", namespace)
+	svc := &openlibertyv1beta1.OpenLibertyApplicationService{Port: 8080, Type: &clusterType}
+	spec := openlibertyv1beta1.OpenLibertyApplicationSpec{Service: svc}
+
+	terminationPolicy := v1.TLSTerminationReencrypt
+	expose := true
+	spec.Env = []corev1.EnvVar{
+		{Name: "SEC_TLS_TRUSTDEFAULTCERTS", Value: "true"},
+		{Name: "SEC_IMPORT_K8S_CERTS", Value: "true"},
+	}
+	spec.Expose = &expose
+	spec.Route = &v1beta1.OpenLibertyApplicationRoute{
+		Host:        "myapp.mycompany.com",
+		Termination: &terminationPolicy,
+		Certificate: &v1beta1.Certificate{},
+	}
+	spec.SSO = &v1beta1.OpenLibertyApplicationSSO{
+		Github: &v1beta1.GithubLogin{Hostname: "github.com"},
+		OIDC: []v1beta1.OidcClient{
+			{
+				DiscoveryEndpoint: "myapp.mycompany.com",
+			},
+		},
+		Oauth2: []v1beta1.OAuth2Client{
+			{
+				AuthorizationEndpoint: "specify-required-value",
+				TokenEndpoint: "specify-required-value",
+			},
+		},
+	}
+	data :=  map[string][]byte{
+			"github-clientId": []byte("bW9vb29vb28="),
+			"github-clientSecret": []byte("dGhlbGF1Z2hpbmdjb3c="),
+			"oidc-clientId": []byte("bW9vb29vb28="),
+			"oidc-clientSecret": []byte("dGhlbGF1Z2hpbmdjb3c="),
+	}
+	pts := &corev1.PodTemplateSpec{}
+	ssoSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name+"-sso",
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: data,
+	}
+
+	openliberty := createOpenLibertyApp(name, namespace, spec)
+	oputils.CustomizePodSpec(pts, openliberty)
+	CustomizeEnvSSO(pts, openliberty, ssoSecret)
+
+	podEnv := envSliceToMap(pts.Spec.Containers[0].Env, data, t)
+	tests := []Test{
+		{"Github clientid set", string(data["github-clientId"]), podEnv["SEC_SSO_GITHUB_CLIENTID"]},
+		{"Github clientSecret set", string(data["github-clientSecret"]), podEnv["SEC_SSO_GITHUB_CLIENTSECRET"]},
+		{"OIDC clientId set", string(data["oidc-clientId"]), podEnv["SEC_SSO_OIDC_CLIENTID"]},
+		{"OIDC clientSecret set", string(data["oidc-clientSecret"]), podEnv["SEC_SSO_OIDC_CLIENTSECRET"]},
+		{"Github hostname set", "github.com", podEnv["SEC_SSO_GITHUB_HOSTNAME"]},
+		{"OIDC discovery endpoint", "myapp.mycompany.com", podEnv["SEC_SSO_OIDC_DISCOVERYENDPOINT"]},
+	}
+
+	if err := verifyTests(tests); err != nil {
+		t.Fatalf("%v", err)
+	}
 }
 
 // Helper Functions
+func envSliceToMap(env []corev1.EnvVar, data map[string][]byte, t *testing.T) map[string]string {
+	out := map[string]string{}
+	for _, el := range env {
+		if el.ValueFrom != nil {
+			val := data[el.ValueFrom.SecretKeyRef.Key]
+			out[el.Name] = ""+ string(val)
+		} else {
+			out[el.Name] = string(el.Value)
+		}
+	}
+	return out
+}
 func createOpenLibertyApp(n, ns string, spec openlibertyv1beta1.OpenLibertyApplicationSpec) *openlibertyv1beta1.OpenLibertyApplication {
 	app := &openlibertyv1beta1.OpenLibertyApplication{
 		ObjectMeta: metav1.ObjectMeta{Name: n, Namespace: ns},

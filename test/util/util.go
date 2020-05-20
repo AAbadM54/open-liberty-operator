@@ -43,7 +43,7 @@ func MakeBasicOpenLibertyApplication(t *testing.T, f *framework.Framework, n str
 			Namespace: ns,
 		},
 		Spec: openlibertyv1beta1.OpenLibertyApplicationSpec{
-			ApplicationImage: "openliberty/open-liberty:kernel-java8-openj9-ubi",
+			ApplicationImage: "openliberty/open-liberty:full-java8-openj9-ubi",
 			Replicas:         &replicas,
 			Expose:           &expose,
 			ReadinessProbe: &corev1.Probe{
@@ -474,4 +474,22 @@ func GetPods(f *framework.Framework, ctx *framework.TestCtx, target string, ns s
 	}
 
 	return podList, nil
+}
+
+func CreateSecretForSSO(f *framework.Framework, ctx *framework.TestCtx, target types.NamespacedName, data map[string][]byte) error {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: target.Name,
+			Namespace: target.Namespace,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: data,
+	}
+
+	err := f.Client.Create(goctx.TODO(), &secret, &framework.CleanupOptions{TestContext: ctx, RetryInterval: time.Second * 2, Timeout: time.Second * 30})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
